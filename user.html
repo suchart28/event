@@ -1,117 +1,150 @@
 <!DOCTYPE html>
 <html lang="th">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>แผนที่งานไหมขอนแก่น</title>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>แผนที่งานไหมขอนแก่น</title>
 
-  <!-- Leaflet -->
-  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
-  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<!-- Leaflet -->
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 
-  <style>
-    body, html { margin: 0; padding: 0; height: 100%; }
-    #map { width: 100%; height: 100vh; }
-    .leaflet-popup-content { font-size: 14px; }
+<style>
+  body, html { margin: 0; padding: 0; height: 100%; }
+  #map { width: 100%; height: 100vh; }
+  .leaflet-popup-content { font-size: 14px; }
 
-    /* ✅ เอฟเฟกต์หมุดเต้นเบาๆ */
-    .pulse-marker {
-      width: 20px;
-      height: 20px;
-      border-radius: 50%;
-      position: relative;
-      transform: translate(-50%, -50%);
-      opacity: 0.9;
-      animation: pulse 2s infinite ease-in-out;
-    }
+  /* หมุด pulse */
+  .pulse-marker {
+    width: 20px;
+    height: 20px;
+    border-radius: 50%;
+    transform: translate(-50%, -50%);
+    opacity: 0.9;
+    animation: pulse 2s infinite ease-in-out;
+  }
+  @keyframes pulse {
+    0% { transform: translate(-50%, -50%) scale(1); opacity: 0.9; }
+    50% { transform: translate(-50%, -50%) scale(1.3); opacity: 0.5; }
+    100% { transform: translate(-50%, -50%) scale(1); opacity: 0.9; }
+  }
+  .pulse-marker::after {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    background: white;
+    transform: translate(-50%, -50%);
+    opacity: 0.6;
+  }
 
-    @keyframes pulse {
-      0% { transform: translate(-50%, -50%) scale(1); opacity: 0.9; }
-      50% { transform: translate(-50%, -50%) scale(1.3); opacity: 0.5; }
-      100% { transform: translate(-50%, -50%) scale(1); opacity: 0.9; }
-    }
-
-    /* เพิ่มเงาเล็กน้อยให้หมุดดูมีมิติ */
-    .pulse-marker::after {
-      content: '';
-      position: absolute;
-      top: 50%;
-      left: 50%;
-      width: 10px;
-      height: 10px;
-      border-radius: 50%;
-      background: white;
-      transform: translate(-50%, -50%);
-      opacity: 0.6;
-    }
-  </style>
+  /* ชื่อสถานที่ */
+  .marker-label {
+    position: absolute;
+    white-space: nowrap;
+    background: rgba(255,255,255,0.9);
+    padding: 2px 6px;
+    border-radius: 4px;
+    font-size: 12px;
+    font-weight: bold;
+    pointer-events: none;
+    transform: translate(-50%, -100%);
+  }
+</style>
 </head>
 <body>
 
-  <div id="map"></div>
+<div id="map"></div>
 
-  <script type="module">
-    import { initializeApp } from "https://www.gstatic.com/firebasejs/12.5.0/firebase-app.js";
-    import { getDatabase, ref, onValue } from "https://www.gstatic.com/firebasejs/12.5.0/firebase-database.js";
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/12.5.0/firebase-app.js";
+import { getDatabase, ref, onValue } from "https://www.gstatic.com/firebasejs/12.5.0/firebase-database.js";
 
-    const firebaseConfig = {
-      apiKey: "AIzaSyDGYuI3yxJbUTc6T_0pm6WiEKZul11tXS0",
-      authDomain: "suchartwork-1487382986748.firebaseapp.com",
-      databaseURL: "https://suchartwork-1487382986748.firebaseio.com",
-      projectId: "suchartwork-1487382986748",
-      storageBucket: "suchartwork-1487382986748.firebasestorage.app",
-      messagingSenderId: "353884592527",
-      appId: "1:353884592527:web:bcdb9b337a6fff8feb13fa"
-    };
+const firebaseConfig = {
+  apiKey: "AIzaSyDGYuI3yxJbUTc6T_0pm6WiEKZul11tXS0",
+  authDomain: "suchartwork-1487382986748.firebaseapp.com",
+  databaseURL: "https://suchartwork-1487382986748.firebaseio.com",
+  projectId: "suchartwork-1487382986748",
+  storageBucket: "suchartwork-1487382986748.firebasestorage.app",
+  messagingSenderId: "353884592527",
+  appId: "1:353884592527:web:bcdb9b337a6fff8feb13fa"
+};
 
-    const app = initializeApp(firebaseConfig);
-    const db = getDatabase(app);
+const app = initializeApp(firebaseConfig);
+const db = getDatabase(app);
 
-    const map = L.map('map').setView([16.4419, 102.8350], 16);
-    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-      maxZoom: 19,
-      attribution: '© OpenStreetMap'
+const map = L.map('map').setView([16.4419, 102.8350], 16);
+L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+  maxZoom: 19,
+  attribution: '© OpenStreetMap'
+}).addTo(map);
+
+const categoryColors = {
+  "ร้านค้า": "#ff4444",
+  "โซนกิจกรรม": "#4285F4",
+  "ซุ้มหน่วยงาน": "#00C851",
+  "สุขา": "#AA66CC",
+  "พยาบาล": "#FF8800",
+  "ความปลอดภัย": "#212121"
+};
+
+const markers = [];
+const labels = [];
+
+function updateLabelPositions() {
+  labels.forEach(obj => {
+    const pos = map.latLngToLayerPoint(obj.latlng);
+    obj.div.style.left = pos.x + 'px';
+    obj.div.style.top = pos.y + 'px';
+  });
+}
+
+onValue(ref(db, "locations"), snapshot => {
+  markers.forEach(m => map.removeLayer(m));
+  labels.forEach(obj => obj.div.remove());
+  markers.length = 0;
+  labels.length = 0;
+
+  snapshot.forEach(child => {
+    const data = child.val();
+    const color = categoryColors[data.category] || "#999";
+
+    // สร้างหมุด pulse
+    const marker = L.circleMarker([data.lat, data.lng], {
+      radius: 10,
+      color: "#000",
+      fillColor: color,
+      fillOpacity: 0.9,
+      weight: 2
     }).addTo(map);
 
-    const categoryColors = {
-      "ร้านค้า": "#ff4444",
-      "โซนกิจกรรม": "#4285F4",
-      "ซุ้มหน่วยงาน": "#00C851",
-      "สุขา": "#AA66CC",
-      "พยาบาล": "#FF8800",
-      "ความปลอดภัย": "#212121"
-    };
+    marker.bindPopup(`
+      <b>${data.name}</b><br>
+      หมวดหมู่: ${data.category}<br>
+      รายละเอียด: ${data.details}<br>
+      <a href="https://www.google.com/maps/dir/?api=1&destination=${data.lat},${data.lng}" target="_blank">
+        🧭 นำทาง
+      </a>
+    `);
+    markers.push(marker);
 
-    const markers = [];
+    // สร้าง label
+    const labelDiv = document.createElement('div');
+    labelDiv.className = 'marker-label';
+    labelDiv.innerText = data.name;
+    document.getElementById('map').appendChild(labelDiv);
 
-    onValue(ref(db, "locations"), snapshot => {
-      markers.forEach(m => map.removeLayer(m));
-      markers.length = 0;
+    labels.push({ div: labelDiv, latlng: L.latLng(data.lat, data.lng) });
+  });
 
-      snapshot.forEach(child => {
-        const data = child.val();
-        const color = categoryColors[data.category] || "#999";
+  updateLabelPositions();
+});
 
-        // ✅ ใช้ L.divIcon สร้างหมุดแบบแอนิเมชัน
-        const animatedIcon = L.divIcon({
-          className: "",
-          html: `<div class="pulse-marker" style="background:${color};"></div>`,
-          iconSize: [20, 20],
-          iconAnchor: [10, 10]
-        });
-
-        const marker = L.marker([data.lat, data.lng], { icon: animatedIcon }).addTo(map);
-        marker.bindPopup(`
-          <b>${data.name}</b><br>
-          หมวดหมู่: ${data.category}<br>
-          รายละเอียด: ${data.details}<br>
-          <a href="https://www.google.com/maps/dir/?api=1&destination=${data.lat},${data.lng}" target="_blank">
-            🧭 นำทาง
-          </a>
-        `);
-        markers.push(marker);
-      });
-    });
-  </script>
+// อัปเดตตำแหน่ง label เมื่อซูมหรือเลื่อน
+map.on('zoom move', updateLabelPositions);
+</script>
 </body>
 </html>
