@@ -11,10 +11,12 @@
 
 <style>
   body, html { margin: 0; padding: 0; height: 100%; font-family: sans-serif; }
+  
+  /* Header */
   #header {
     width: 100%;
     height: 50px;
-    background: linear-gradient(to right, #fbc02d, #ff9800); /* เหลืองเข้ม → ส้ม */
+    background: linear-gradient(to right, #fbc02d, #ff9800); 
     display: flex;
     align-items: center;
     justify-content: center;
@@ -26,11 +28,39 @@
     top: 0;
     z-index: 999;
   }
+
+  /* แผนที่ */
   #map { 
     width: 100%; 
-    height: calc(100vh - 50px); /* ลดความสูงให้ไม่ทับ header */
+    height: calc(100vh - 50px - 40px); /* ลบความสูง header + footer */
     margin-top: 50px;
   }
+
+  /* Footer ตัววิ่ง */
+  #footer-marquee {
+    position: fixed;
+    bottom: 0;
+    width: 100%;
+    height: 40px;
+    background: rgba(0,0,0,0.6);
+    overflow: hidden;
+    display: flex;
+    align-items: center;
+  }
+  #marquee-text {
+    white-space: nowrap;
+    color: white;
+    font-weight: bold;
+    text-shadow: -1px -1px 0 #000, 1px -1px 0 #000, -1px 1px 0 #000, 1px 1px 0 #000; /* ขอบสีดำ */
+    display: inline-block;
+    padding-left: 100%; /* เริ่มนอกจอขวา */
+    animation: marquee 120s linear infinite;
+  }
+  @keyframes marquee {
+    0% { transform: translateX(0%); }
+    100% { transform: translateX(-100%); }
+  }
+
   .leaflet-popup-content { font-size: 14px; }
 
   /* หมุด pulse ของสถานที่ */
@@ -105,11 +135,18 @@
 </head>
 <body>
 
-<!-- ส่วนหัว -->
+<!-- Header -->
 <div id="header">แผนที่งานไหมขอนแก่น</div>
 
-<!-- แผนที่ -->
+<!-- Map -->
 <div id="map"></div>
+
+<!-- Footer marquee -->
+<div id="footer-marquee">
+  <div id="marquee-text">
+    งานเทศกาลไหมนานาชาติ ประเพณีผูกเสี่ยว และงานกาชาดจังหวัดขอนแก่น ประจำปี 2568 จัดขึ้นระหว่างวันที่ 29 พฤศจิกายน ถึง 10 ธันวาคม 2568 ณ บริเวณศาลากลางจังหวัดขอนแก่น ภายในงานจะมีทั้งการแสดงหมอลำ แฟชั่นโชว์ผ้าไหม ตลาดสินค้าชุมชน อาหาร และเครื่องเล่น คิวการแสดงเวทีกลาง > 29 พ.ย. ประถมออเดอร์โชว์ & บิว จิตรฉรีญา > 30 พ.ย. รัตนศิลป์อินตาไทยราษร์ > 1 ธ.ค. รุ่งสยามวาทะศิลป์ > 2 ธ.ค. การแสดงเวทีกลาง > 3 ธ.ค. คำผุนร่วมมิตร > 4 ธ.ค. ระเบียบวาทะศิลป์ > 5 ธ.ค. เกรียงไกรอิสานศิลป์ > 6 ธ.ค. แฟชั่นโชว์ผ้าไหมสุดอลังการ > 7 ธ.ค. อีสานนครศิลป์ > 8 ธ.ค. ใจเกินร้อย & บอย ศิริชัย > 9 ธ.ค. คอนเสิร์ตสตริงเพื่อชีวิต > 10 ธ.ค. หนึ่งเพชรเมืองชัย
+  </div>
+</div>
 
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/12.5.0/firebase-app.js";
