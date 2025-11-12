@@ -4,14 +4,55 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>แผนที่งานไหมขอนแก่น</title>
+
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
 <style>
-  html, body { margin:0; padding:0; height:100%; }
-  #map { width:100%; height:100vh; }
+html, body { margin:0; padding:0; height:100%; }
+#map { width:100%; height:100vh; }
+
+.leaflet-popup-content { font-size:14px; }
+
+/* Legend */
+.legend {
+  position:absolute;
+  bottom:10px;
+  left:10px;
+  background:rgba(255,255,255,0.9);
+  padding:8px 12px;
+  border-radius:8px;
+  box-shadow:0 0 5px rgba(0,0,0,0.2);
+  font-size:14px;
+  line-height:1.5;
+}
+.legend div { display:flex; align-items:center; }
+.legend span {
+  display:inline-block;
+  width:16px; height:16px;
+  margin-right:6px;
+  border-radius:50%;
+}
+
+/* Pulse effect for circleMarkers */
+.pulse {
+  animation: pulse 1.5s infinite ease-in-out;
+}
+@keyframes pulse {
+  0%,100% { transform: scale(1); opacity:0.9; }
+  50% { transform: scale(1.3); opacity:0.6; }
+}
 </style>
 </head>
 <body>
+
 <div id="map"></div>
+<div class="legend">
+  <div><span style="background:red;"></span> ร้านค้า</div>
+  <div><span style="background:orange;"></span> โซนกิจกรรม</div>
+  <div><span style="background:blue;"></span> ซุ้มหน่วยงาน</div>
+  <div><span style="background:green;"></span> สุขา</div>
+  <div><span style="background:pink;"></span> พยาบาล</div>
+  <div><span style="background:purple;"></span> ความปลอดภัย</div>
+</div>
 
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script type="module">
@@ -34,22 +75,38 @@ const db = getDatabase(app);
 const map = L.map('map').setView([16.4419, 102.8350], 17);
 L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom:19 }).addTo(map);
 
-const colors = { "ร้านค้า":"red", "โซนกิจกรรม":"orange", "ซุ้มหน่วยงาน":"blue", "สุขา":"green", "พยาบาล":"pink", "ความปลอดภัย":"purple" };
+const colors = {
+  "ร้านค้า": "red",
+  "โซนกิจกรรม": "orange",
+  "ซุ้มหน่วยงาน": "blue",
+  "สุขา": "green",
+  "พยาบาล": "pink",
+  "ความปลอดภัย": "purple"
+};
 
 const locRef = ref(db, "khonkaenfair/locations");
-onValue(locRef, snap => {
-  snap.forEach(c => {
-    const d = c.val();
-    const color = colors[d.category] || "gray";
-    const marker = L.circleMarker([d.lat, d.lng], {
-      radius: 8,
-      color: color,
-      fillColor: color,
+onValue(locRef, snapshot => {
+  snapshot.forEach(child => {
+    const data = child.val();
+    const catColor = colors[data.category] || "gray";
+
+    // ใช้ circleMarker + pulse
+    const marker = L.circleMarker([data.lat, data.lng], {
+      radius: 10,
+      color: catColor,
+      fillColor: catColor,
       fillOpacity: 0.9,
-      weight: 2
+      weight: 2,
+      className: 'pulse'
     }).addTo(map);
-    const navUrl = `https://www.google.com/maps/dir/?api=1&destination=${d.lat},${d.lng}`;
-    marker.bindPopup(`<b>${d.name}</b><br>${d.category}<br>${d.detail}<br><a href="${navUrl}" target="_blank">นำทาง</a>`);
+
+    const navUrl = `https://www.google.com/maps/dir/?api=1&destination=${data.lat},${data.lng}`;
+    marker.bindPopup(`
+      <b>${data.name}</b><br>
+      หมวดหมู่: ${data.category}<br>
+      รายละเอียด: ${data.details}<br>
+      <a href="${navUrl}" target="_blank">นำทาง</a>
+    `);
   });
 });
 </script>
