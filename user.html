@@ -1,101 +1,57 @@
 <!DOCTYPE html>
 <html lang="th">
 <head>
-  <meta charset="UTF-8">
-  <title>แผนที่งานไหมขอนแก่น</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
-  <style>
-    body { margin:0; font-family:sans-serif; }
-    #map { height:100vh; }
-
-    /* Animation for markers */
-    .leaflet-marker-icon {
-      animation: bounce 1.5s ease infinite;
-    }
-    @keyframes bounce {
-      0%, 100% { transform: translateY(0); }
-      50% { transform: translateY(-4px); }
-    }
-
-    /* Legend box */
-    .legend {
-      position: absolute;
-      bottom: 10px;
-      left: 10px;
-      background: rgba(255,255,255,0.9);
-      padding: 8px 12px;
-      border-radius: 8px;
-      box-shadow: 0 0 5px rgba(0,0,0,0.2);
-      font-size: 14px;
-      line-height: 1.5;
-    }
-    .legend div { display:flex; align-items:center; }
-    .legend span {
-      display:inline-block;
-      width:16px; height:16px;
-      margin-right:6px;
-      border-radius:50%;
-    }
-  </style>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>แผนที่งานไหมขอนแก่น</title>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+<style>
+  html, body { margin:0; padding:0; height:100%; }
+  #map { width:100%; height:100vh; }
+</style>
 </head>
 <body>
-  <div id="map"></div>
-  <div class="legend">
-    <div><span style="background:red;"></span> ร้านค้า</div>
-    <div><span style="background:orange;"></span> โซนกิจกรรม</div>
-    <div><span style="background:blue;"></span> ซุ้มหน่วยงาน</div>
-    <div><span style="background:green;"></span> สุขา</div>
-    <div><span style="background:pink;"></span> พยาบาล</div>
-    <div><span style="background:purple;"></span> ความปลอดภัย</div>
-  </div>
+<div id="map"></div>
 
-  <script type="module">
-    import { initializeApp } from "https://www.gstatic.com/firebasejs/12.5.0/firebase-app.js";
-    import { getDatabase, ref, onValue } from "https://www.gstatic.com/firebasejs/12.5.0/firebase-database.js";
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/12.5.0/firebase-app.js";
+import { getDatabase, ref, onValue } from "https://www.gstatic.com/firebasejs/12.5.0/firebase-database.js";
 
-    const firebaseConfig = {
-      apiKey: "AIzaSyDGYuI3yxJbUTc6T_0pm6WiEKZul11tXS0",
-      authDomain: "suchartwork-1487382986748.firebaseapp.com",
-      databaseURL: "https://suchartwork-1487382986748.firebaseio.com",
-      projectId: "suchartwork-1487382986748",
-      storageBucket: "suchartwork-1487382986748.firebasestorage.app",
-      messagingSenderId: "353884592527",
-      appId: "1:353884592527:web:bcdb9b337a6fff8feb13fa"
-    };
+const firebaseConfig = {
+  apiKey: "AIzaSyDGYuI3yxJbUTc6T_0pm6WiEKZul11tXS0",
+  authDomain: "suchartwork-1487382986748.firebaseapp.com",
+  databaseURL: "https://suchartwork-1487382986748.firebaseio.com",
+  projectId: "suchartwork-1487382986748",
+  storageBucket: "suchartwork-1487382986748.firebasestorage.app",
+  messagingSenderId: "353884592527",
+  appId: "1:353884592527:web:bcdb9b337a6fff8feb13fa"
+};
 
-    const app = initializeApp(firebaseConfig);
-    const db = getDatabase(app);
+const app = initializeApp(firebaseConfig);
+const db = getDatabase(app);
 
-    const map = L.map('map').setView([16.4419, 102.8350], 17);
-    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom:19 }).addTo(map);
+const map = L.map('map').setView([16.4419, 102.8350], 17);
+L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom:19 }).addTo(map);
 
-    const colors = {
-      "ร้านค้า": "red",
-      "โซนกิจกรรม": "orange",
-      "ซุ้มหน่วยงาน": "blue",
-      "สุขา": "green",
-      "พยาบาล": "pink",
-      "ความปลอดภัย": "purple"
-    };
+const colors = { "ร้านค้า":"red", "โซนกิจกรรม":"orange", "ซุ้มหน่วยงาน":"blue", "สุขา":"green", "พยาบาล":"pink", "ความปลอดภัย":"purple" };
 
-    const locRef = ref(db, "khonkaenfair/locations");
-    onValue(locRef, (snap) => {
-      snap.forEach((c) => {
-        const d = c.val();
-        const color = colors[d.category] || "gray";
-        const icon = L.divIcon({
-          className: "custom-pin",
-          html: `<div style="background:${color};width:16px;height:16px;border-radius:50%;border:2px solid white;box-shadow:0 0 3px #333;"></div>`,
-          iconSize: [16,16],
-          iconAnchor: [8,8]
-        });
-
-        const m = L.marker([d.lat, d.lng], { icon }).addTo(map);
-        const navUrl = `https://www.google.com/maps/dir/?api=1&destination=${d.lat},${d.lng}`;
-        m.bindPopup(`<b>${d.name}</b><br>${d.category}<br>${d.detail}<br><a href="${navUrl}" target="_blank">นำทาง</a>`);
-      });
-    });
-  </script>
+const locRef = ref(db, "khonkaenfair/locations");
+onValue(locRef, snap => {
+  snap.forEach(c => {
+    const d = c.val();
+    const color = colors[d.category] || "gray";
+    const marker = L.circleMarker([d.lat, d.lng], {
+      radius: 8,
+      color: color,
+      fillColor: color,
+      fillOpacity: 0.9,
+      weight: 2
+    }).addTo(map);
+    const navUrl = `https://www.google.com/maps/dir/?api=1&destination=${d.lat},${d.lng}`;
+    marker.bindPopup(`<b>${d.name}</b><br>${d.category}<br>${d.detail}<br><a href="${navUrl}" target="_blank">นำทาง</a>`);
+  });
+});
+</script>
 </body>
 </html>
