@@ -3,36 +3,40 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Admin แผนที่งานไหมขอนแก่น</title>
-  <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
+  <title>Admin - งานไหมขอนแก่น</title>
+
+  <!-- Leaflet -->
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
   <style>
-    body { font-family: 'Prompt', sans-serif; margin: 0; padding: 0; }
-    #loginContainer, #adminContainer { display: none; padding: 20px; }
-    #map { height: 400px; margin-top: 10px; border-radius: 10px; }
-    label { display: block; margin-top: 10px; }
-    input, select, textarea, button { width: 100%; padding: 8px; margin-top: 5px; }
-    button { background: #007bff; color: white; border: none; border-radius: 5px; cursor: pointer; }
-    button:hover { background: #0056b3; }
-    .location-list { margin-top: 15px; }
-    .location-item { padding: 5px; border-bottom: 1px solid #ccc; }
+    body { font-family: sans-serif; margin: 0; }
+    #loginBox, #adminPanel { display: none; }
+    #map { height: 400px; width: 100%; margin-top: 10px; }
+    .container { padding: 15px; }
+    input, select, textarea, button { display: block; margin: 8px 0; width: 100%; padding: 8px; }
+    button { background: #4CAF50; color: white; border: none; cursor: pointer; }
+    button:hover { background: #45a049; }
+    .location-list { margin-top: 15px; border-top: 1px solid #ccc; padding-top: 10px; }
+    .location-item { border-bottom: 1px solid #ddd; padding: 5px 0; }
   </style>
 </head>
 <body>
-  <div id="loginContainer">
+
+  <div class="container" id="loginBox">
     <h2>เข้าสู่ระบบผู้ดูแล</h2>
-    <label>ชื่อผู้ใช้</label>
-    <input type="text" id="username">
-    <label>รหัสผ่าน</label>
-    <input type="password" id="password">
+    <input type="text" id="username" placeholder="Username">
+    <input type="password" id="password" placeholder="Password">
     <button id="loginBtn">เข้าสู่ระบบ</button>
   </div>
 
-  <div id="adminContainer">
-    <h2>แผงควบคุมผู้ดูแล - ปักหมุดสถานที่</h2>
-    <label>ชื่อสถานที่</label>
-    <input type="text" id="name">
+  <div class="container" id="adminPanel">
+    <h2>จัดการพิกัด งานไหมขอนแก่น</h2>
 
-    <label>หมวดหมู่</label>
+    <label>ชื่อสถานที่:</label>
+    <input type="text" id="placeName">
+
+    <label>หมวดหมู่:</label>
     <select id="category">
       <option>ร้านค้า</option>
       <option>โซนกิจกรรม</option>
@@ -42,17 +46,17 @@
       <option>ความปลอดภัย</option>
     </select>
 
-    <label>รายละเอียด</label>
+    <label>รายละเอียด:</label>
     <textarea id="details"></textarea>
 
+    <button id="detectLocation">ใช้ตำแหน่งปัจจุบัน</button>
     <div id="map"></div>
-    <button id="saveBtn">บันทึกสถานที่</button>
 
-    <h3>รายการสถานที่ทั้งหมด</h3>
+    <button id="saveLocation">บันทึกพิกัด</button>
+
     <div class="location-list" id="locationList"></div>
   </div>
 
-  <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
   <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/12.5.0/firebase-app.js";
     import { getDatabase, ref, push, onValue, remove } from "https://www.gstatic.com/firebasejs/12.5.0/firebase-database.js";
@@ -70,67 +74,85 @@
     const app = initializeApp(firebaseConfig);
     const db = getDatabase(app);
 
-    const loginContainer = document.getElementById("loginContainer");
-    const adminContainer = document.getElementById("adminContainer");
+    let map, marker;
 
-    loginContainer.style.display = "block";
+    // LOGIN SYSTEM
+    const loginBox = document.getElementById('loginBox');
+    const adminPanel = document.getElementById('adminPanel');
+    const loginBtn = document.getElementById('loginBtn');
 
-    document.getElementById("loginBtn").addEventListener("click", () => {
-      const user = document.getElementById("username").value;
-      const pass = document.getElementById("password").value;
+    loginBox.style.display = "block";
+
+    loginBtn.addEventListener('click', () => {
+      const user = document.getElementById('username').value.trim();
+      const pass = document.getElementById('password').value.trim();
       if (user === "admin" && pass === "Tommasi288!") {
-        loginContainer.style.display = "none";
-        adminContainer.style.display = "block";
+        loginBox.style.display = "none";
+        adminPanel.style.display = "block";
+        initMap();
+        loadLocations();
       } else {
         alert("ชื่อผู้ใช้หรือรหัสผ่านไม่ถูกต้อง");
       }
     });
 
-    const map = L.map("map").setView([16.4419, 102.835], 16);
-    L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png").addTo(map);
-    const marker = L.marker([16.4419, 102.835], { draggable: true }).addTo(map);
+    // Initialize map
+    function initMap() {
+      map = L.map('map').setView([16.4419, 102.8350], 16);
+      L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        maxZoom: 19,
+        attribution: '© OpenStreetMap'
+      }).addTo(map);
 
-    if (navigator.geolocation) {
-      navigator.geolocation.getCurrentPosition((pos) => {
-        const lat = pos.coords.latitude;
-        const lng = pos.coords.longitude;
-        marker.setLatLng([lat, lng]);
-        map.setView([lat, lng], 17);
+      map.on('click', e => {
+        if (marker) marker.setLatLng(e.latlng);
+        else marker = L.marker(e.latlng, { draggable: true }).addTo(map);
       });
     }
 
-    document.getElementById("saveBtn").addEventListener("click", () => {
-      const name = document.getElementById("name").value;
-      const category = document.getElementById("category").value;
-      const details = document.getElementById("details").value;
-      const lat = marker.getLatLng().lat;
-      const lng = marker.getLatLng().lng;
-
-      if (!name.trim()) return alert("กรุณากรอกชื่อสถานที่");
-
-      push(ref(db, "locations"), { name, category, details, lat, lng });
-      alert("✅ บันทึกข้อมูลเรียบร้อยแล้ว");
-    });
-
-    const list = document.getElementById("locationList");
-    onValue(ref(db, "locations"), (snapshot) => {
-      list.innerHTML = "";
-      const data = snapshot.val();
-      if (!data) return;
-      Object.entries(data).forEach(([key, loc]) => {
-        const div = document.createElement("div");
-        div.className = "location-item";
-        div.innerHTML = `<b>${loc.name}</b> (${loc.category})<br>${loc.details}
-        <br><button onclick="deleteLocation('${key}')">ลบ</button>`;
-        list.appendChild(div);
+    // Detect current location
+    document.getElementById('detectLocation').addEventListener('click', () => {
+      navigator.geolocation.getCurrentPosition(pos => {
+        const { latitude, longitude } = pos.coords;
+        if (marker) marker.setLatLng([latitude, longitude]);
+        else marker = L.marker([latitude, longitude], { draggable: true }).addTo(map);
+        map.setView([latitude, longitude], 17);
       });
     });
 
-    window.deleteLocation = (key) => {
-      if (confirm("ต้องการลบสถานที่นี้หรือไม่?")) {
-        remove(ref(db, "locations/" + key));
-      }
-    };
+    // Save location
+    document.getElementById('saveLocation').addEventListener('click', () => {
+      const name = document.getElementById('placeName').value;
+      const category = document.getElementById('category').value;
+      const details = document.getElementById('details').value;
+      if (!marker) return alert("กรุณาปักหมุดบนแผนที่ก่อน");
+      const { lat, lng } = marker.getLatLng();
+
+      push(ref(db, "locations"), { name, category, details, lat, lng });
+      alert("บันทึกข้อมูลเรียบร้อย");
+      document.getElementById('placeName').value = "";
+      document.getElementById('details').value = "";
+    });
+
+    // Load all locations
+    function loadLocations() {
+      const listRef = ref(db, "locations");
+      onValue(listRef, snapshot => {
+        const listDiv = document.getElementById('locationList');
+        listDiv.innerHTML = "<h3>รายการพิกัดทั้งหมด</h3>";
+        snapshot.forEach(child => {
+          const data = child.val();
+          const item = document.createElement('div');
+          item.classList.add('location-item');
+          item.innerHTML = `<b>${data.name}</b> (${data.category})<br>${data.details}
+          <br><button data-id="${child.key}">ลบ</button>`;
+          item.querySelector('button').addEventListener('click', e => {
+            remove(ref(db, "locations/" + e.target.dataset.id));
+          });
+          listDiv.appendChild(item);
+        });
+      });
+    }
   </script>
 </body>
 </html>
