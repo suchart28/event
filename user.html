@@ -62,7 +62,7 @@
       width: 20px;
       height: 20px;
       border-radius: 50%;
-      background: #2196F3; /* สีน้ำเงิน */
+      background: #2196F3;
       border: 2px solid #0D47A1;
       transform: translate(-50%, -50%);
       pointer-events: none;
@@ -107,7 +107,7 @@ const db = getDatabase(app);
 
 const map = L.map('map').setView([16.4419, 102.8350], 16);
 
-// 🔹 Base map: Satellite + labels
+// Base map: Satellite + labels
 const satellite = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
   attribution: '© ESRI Satellite'
 }).addTo(map);
@@ -129,7 +129,7 @@ const categoryColors = {
 const markers = [];
 let userMarker = null;
 
-// 🔹 โหลดหมุดสถานที่
+// โหลดหมุดสถานที่
 onValue(ref(db, "locations"), snapshot => {
   markers.forEach(m => map.removeLayer(m));
   markers.length = 0;
@@ -152,19 +152,32 @@ onValue(ref(db, "locations"), snapshot => {
     });
 
     const marker = L.marker([data.lat, data.lng], { icon: animatedIcon }).addTo(map);
+
+    // Popup เป็นปุ่มสีสดใส
     marker.bindPopup(`
       <b>${data.name}</b><br>
       หมวดหมู่: ${data.category}<br>
       รายละเอียด: ${data.details}<br>
-      <a href="https://www.google.com/maps/dir/?api=1&destination=${data.lat},${data.lng}" target="_blank">
-        🧭 นำทาง
+      <a href="https://www.google.com/maps/dir/?api=1&destination=${data.lat},${data.lng}" 
+         target="_blank"
+         style="
+           display:inline-block;
+           background-color:#ff5722;
+           color:white;
+           padding:6px 12px;
+           border-radius:5px;
+           text-decoration:none;
+           font-weight:bold;
+         ">
+         นำทาง
       </a>
     `);
+
     markers.push(marker);
   });
 });
 
-// 🔹 แสดงตำแหน่งผู้ใช้
+// แสดงตำแหน่งผู้ใช้
 if (navigator.geolocation) {
   navigator.geolocation.getCurrentPosition(pos => {
     const lat = pos.coords.latitude;
