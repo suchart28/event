@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>User - แผนที่งานไหมขอนแก่น</title>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <style>
+    html, body { height: 100%; margin: 0; }
+    #map { height: 100%; width: 100%; }
+    .leaflet-popup-content { font-size: 14px; }
+  </style>
+</head>
+<body>
+  <div id="map"></div>
+
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/12.5.0/firebase-app.js";
+    import { getDatabase, ref, onValue } from "https://www.gstatic.com/firebasejs/12.5.0/firebase-database.js";
+
+    const firebaseConfig = {
+      apiKey: "AIzaSyDGYuI3yxJbUTc6T_0pm6WiEKZul11tXS0",
+      authDomain: "suchartwork-1487382986748.firebaseapp.com",
+      databaseURL: "https://suchartwork-1487382986748.firebaseio.com",
+      projectId: "suchartwork-1487382986748",
+      storageBucket: "suchartwork-1487382986748.firebasestorage.app",
+      messagingSenderId: "353884592527",
+      appId: "1:353884592527:web:bcdb9b337a6fff8feb13fa"
+    };
+    const app = initializeApp(firebaseConfig);
+    const db = getDatabase(app);
+
+    const map = L.map('map').setView([16.4322, 102.8236], 17);
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+      attribution: '© OpenStreetMap contributors'
+    }).addTo(map);
+
+    const iconColors = {
+      "ร้านค้า": "007bff",
+      "โซนกิจกรรม": "ff9900",
+      "ซุ้มหน่วยงาน": "00cc66",
+      "สุขา": "9933ff",
+      "พยาบาล": "ff0000",
+      "ความปลอดภัย": "000000"
+    };
+
+    const markers = [];
+
+    onValue(ref(db, "places"), snapshot => {
+      markers.forEach(m => map.removeLayer(m));
+      markers.length = 0;
+      snapshot.forEach(item => {
+        const val = item.val();
+        const color = iconColors[val.category] || "808080";
+        const icon = L.icon({
+          iconUrl: `https://chart.googleapis.com/chart?chst=d_map_pin_letter&chld=%E2%80%A2|${color}`,
+          iconSize: [21, 34],
+          iconAnchor: [10, 34]
+        });
+        const marker = L.marker([val.lat, val.lng], { icon }).addTo(map);
+        marker.bindPopup(`
+          <b>${val.name}</b><br>
+          🏷️ หมวดหมู่: ${val.category}<br>
+          ${val.detail || ''}<br><br>
+          <a target="_blank" href="https://www.google.com/maps/dir/?api=1&destination=${val.lat},${val.lng}">
+            🧭 นำทางด้วย Google Maps
+          </a>
+        `);
+        markers.push(marker);
+      });
+    });
+  </script>
+</body>
+</html>
