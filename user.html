@@ -3,18 +3,32 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>User - แผนที่งานไหมขอนแก่น</title>
-  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
-  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <title>แผนที่งานไหมขอนแก่น</title>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
   <style>
-    html, body { height: 100%; margin: 0; }
-    #map { height: 100%; width: 100%; }
-    .leaflet-popup-content { font-size: 14px; }
+    body { margin: 0; font-family: 'Prompt', sans-serif; }
+    #map { height: 100vh; width: 100vw; }
+    .legend {
+      position: absolute; bottom: 10px; left: 10px;
+      background: white; padding: 10px; border-radius: 8px;
+      box-shadow: 0 0 5px rgba(0,0,0,0.3);
+    }
+    .legend div { margin: 3px 0; }
   </style>
 </head>
 <body>
   <div id="map"></div>
+  <div class="legend">
+    <b>หมวดหมู่</b><br>
+    🔴 ร้านค้า<br>
+    🔵 โซนกิจกรรม<br>
+    🟢 ซุ้มหน่วยงาน<br>
+    🟣 สุขา<br>
+    🟠 พยาบาล<br>
+    ⚫ ความปลอดภัย
+  </div>
 
+  <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
   <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/12.5.0/firebase-app.js";
     import { getDatabase, ref, onValue } from "https://www.gstatic.com/firebasejs/12.5.0/firebase-database.js";
@@ -28,46 +42,42 @@
       messagingSenderId: "353884592527",
       appId: "1:353884592527:web:bcdb9b337a6fff8feb13fa"
     };
+
     const app = initializeApp(firebaseConfig);
     const db = getDatabase(app);
 
-    const map = L.map('map').setView([16.4322, 102.8236], 17);
-    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-      attribution: '© OpenStreetMap contributors'
-    }).addTo(map);
+    const map = L.map("map").setView([16.4419, 102.835], 16);
+    L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png").addTo(map);
 
-    const iconColors = {
-      "ร้านค้า": "007bff",
-      "โซนกิจกรรม": "ff9900",
-      "ซุ้มหน่วยงาน": "00cc66",
-      "สุขา": "9933ff",
-      "พยาบาล": "ff0000",
-      "ความปลอดภัย": "000000"
+    const categoryColors = {
+      "ร้านค้า": "red",
+      "โซนกิจกรรม": "blue",
+      "ซุ้มหน่วยงาน": "green",
+      "สุขา": "purple",
+      "พยาบาล": "orange",
+      "ความปลอดภัย": "black"
     };
 
-    const markers = [];
-
-    onValue(ref(db, "places"), snapshot => {
-      markers.forEach(m => map.removeLayer(m));
-      markers.length = 0;
-      snapshot.forEach(item => {
-        const val = item.val();
-        const color = iconColors[val.category] || "808080";
-        const icon = L.icon({
-          iconUrl: `https://chart.googleapis.com/chart?chst=d_map_pin_letter&chld=%E2%80%A2|${color}`,
-          iconSize: [21, 34],
-          iconAnchor: [10, 34]
-        });
-        const marker = L.marker([val.lat, val.lng], { icon }).addTo(map);
+    onValue(ref(db, "locations"), (snapshot) => {
+      map.eachLayer(layer => { if (layer instanceof L.Marker) map.removeLayer(layer); });
+      const data = snapshot.val();
+      if (!data) return;
+      Object.values(data).forEach(loc => {
+        const color = categoryColors[loc.category] || "gray";
+        const marker = L.marker([loc.lat, loc.lng], {
+          icon: L.icon({
+            iconUrl: `https://chart.googleapis.com/chart?chst=d_map_pin_letter&chld=%E2%80%A2|${color.replace("#","")}`,
+            iconSize: [21, 34],
+            iconAnchor: [10, 34],
+            popupAnchor: [1, -30]
+          })
+        }).addTo(map);
         marker.bindPopup(`
-          <b>${val.name}</b><br>
-          🏷️ หมวดหมู่: ${val.category}<br>
-          ${val.detail || ''}<br><br>
-          <a target="_blank" href="https://www.google.com/maps/dir/?api=1&destination=${val.lat},${val.lng}">
-            🧭 นำทางด้วย Google Maps
-          </a>
+          <b>${loc.name}</b><br>
+          หมวดหมู่: ${loc.category}<br>
+          รายละเอียด: ${loc.details}<br>
+          <a href="https://www.google.com/maps/dir/?api=1&destination=${loc.lat},${loc.lng}" target="_blank">🧭 นำทาง</a>
         `);
-        markers.push(marker);
       });
     });
   </script>
