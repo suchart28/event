@@ -2,22 +2,53 @@
 <html lang="th">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>แผนที่งานไหมขอนแก่น</title>
-
-  <!-- Leaflet -->
-  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
-  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
   <style>
-    body, html { margin: 0; padding: 0; height: 100%; }
-    #map { width: 100%; height: 100vh; }
-    .leaflet-popup-content { font-size: 14px; }
+    body { margin:0; font-family:sans-serif; }
+    #map { height:100vh; }
+
+    /* Animation for markers */
+    .leaflet-marker-icon {
+      animation: bounce 1.5s ease infinite;
+    }
+    @keyframes bounce {
+      0%, 100% { transform: translateY(0); }
+      50% { transform: translateY(-4px); }
+    }
+
+    /* Legend box */
+    .legend {
+      position: absolute;
+      bottom: 10px;
+      left: 10px;
+      background: rgba(255,255,255,0.9);
+      padding: 8px 12px;
+      border-radius: 8px;
+      box-shadow: 0 0 5px rgba(0,0,0,0.2);
+      font-size: 14px;
+      line-height: 1.5;
+    }
+    .legend div { display:flex; align-items:center; }
+    .legend span {
+      display:inline-block;
+      width:16px; height:16px;
+      margin-right:6px;
+      border-radius:50%;
+    }
   </style>
 </head>
 <body>
-
   <div id="map"></div>
+  <div class="legend">
+    <div><span style="background:red;"></span> ร้านค้า</div>
+    <div><span style="background:orange;"></span> โซนกิจกรรม</div>
+    <div><span style="background:blue;"></span> ซุ้มหน่วยงาน</div>
+    <div><span style="background:green;"></span> สุขา</div>
+    <div><span style="background:pink;"></span> พยาบาล</div>
+    <div><span style="background:purple;"></span> ความปลอดภัย</div>
+  </div>
 
   <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/12.5.0/firebase-app.js";
@@ -36,43 +67,33 @@
     const app = initializeApp(firebaseConfig);
     const db = getDatabase(app);
 
-    const map = L.map('map').setView([16.4419, 102.8350], 16);
-    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-      maxZoom: 19,
-      attribution: '© OpenStreetMap'
-    }).addTo(map);
+    const map = L.map('map').setView([16.4419, 102.8350], 17);
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom:19 }).addTo(map);
 
-    const icons = {
+    const colors = {
       "ร้านค้า": "red",
-      "โซนกิจกรรม": "blue",
-      "ซุ้มหน่วยงาน": "green",
-      "สุขา": "purple",
-      "พยาบาล": "orange",
-      "ความปลอดภัย": "black"
+      "โซนกิจกรรม": "orange",
+      "ซุ้มหน่วยงาน": "blue",
+      "สุขา": "green",
+      "พยาบาล": "pink",
+      "ความปลอดภัย": "purple"
     };
 
-    const markerList = [];
-
-    onValue(ref(db, "locations"), snapshot => {
-      markerList.forEach(m => map.removeLayer(m));
-      snapshot.forEach(child => {
-        const data = child.val();
-        const color = icons[data.category] || "gray";
-        const icon = L.icon({
-          iconUrl: `https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-${color}.png`,
-          shadowUrl: "https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png",
-          iconSize: [25, 41],
-          iconAnchor: [12, 41],
-          popupAnchor: [1, -34]
+    const locRef = ref(db, "khonkaenfair/locations");
+    onValue(locRef, (snap) => {
+      snap.forEach((c) => {
+        const d = c.val();
+        const color = colors[d.category] || "gray";
+        const icon = L.divIcon({
+          className: "custom-pin",
+          html: `<div style="background:${color};width:16px;height:16px;border-radius:50%;border:2px solid white;box-shadow:0 0 3px #333;"></div>`,
+          iconSize: [16,16],
+          iconAnchor: [8,8]
         });
-        const marker = L.marker([data.lat, data.lng], { icon }).addTo(map);
-        marker.bindPopup(`
-          <b>${data.name}</b><br>
-          หมวดหมู่: ${data.category}<br>
-          รายละเอียด: ${data.details}<br>
-          <a href="https://www.google.com/maps/dir/?api=1&destination=${data.lat},${data.lng}" target="_blank">นำทาง</a>
-        `);
-        markerList.push(marker);
+
+        const m = L.marker([d.lat, d.lng], { icon }).addTo(map);
+        const navUrl = `https://www.google.com/maps/dir/?api=1&destination=${d.lat},${d.lng}`;
+        m.bindPopup(`<b>${d.name}</b><br>${d.category}<br>${d.detail}<br><a href="${navUrl}" target="_blank">นำทาง</a>`);
       });
     });
   </script>
