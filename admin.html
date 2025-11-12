@@ -1,39 +1,39 @@
 <!DOCTYPE html>
 <html lang="th">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Admin - แผนที่งานไหมขอนแก่น</title>
-  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
-  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Admin แผนที่งานไหมขอนแก่น</title>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
   <style>
-    body { margin: 0; font-family: sans-serif; background: #f5f5f5; }
-    #map { height: 70vh; }
-    form { padding: 10px; background: #fff; box-shadow: 0 0 8px #ccc; margin: 10px; border-radius: 8px; }
-    input, select, textarea, button { width: 100%; margin: 5px 0; padding: 8px; font-size: 14px; }
-    button { background: #007bff; color: white; border: none; border-radius: 6px; cursor: pointer; }
+    body { font-family: 'Prompt', sans-serif; margin: 0; padding: 0; }
+    #loginContainer, #adminContainer { display: none; padding: 20px; }
+    #map { height: 400px; margin-top: 10px; border-radius: 10px; }
+    label { display: block; margin-top: 10px; }
+    input, select, textarea, button { width: 100%; padding: 8px; margin-top: 5px; }
+    button { background: #007bff; color: white; border: none; border-radius: 5px; cursor: pointer; }
     button:hover { background: #0056b3; }
-    ul { list-style: none; padding: 0; margin: 10px; }
-    li { background: #fff; margin-bottom: 5px; padding: 8px; border-radius: 6px; box-shadow: 0 0 5px #ccc; }
-    #logout { background: #dc3545; margin: 10px; }
-    #logout:hover { background: #b52a37; }
+    .location-list { margin-top: 15px; }
+    .location-item { padding: 5px; border-bottom: 1px solid #ccc; }
   </style>
 </head>
 <body>
-  <script>
-    // 🔒 ตรวจสอบสถานะการล็อกอิน
-    if (localStorage.getItem("adminLogin") !== "true") {
-      window.location.href = "login.html";
-    }
-  </script>
+  <div id="loginContainer">
+    <h2>เข้าสู่ระบบผู้ดูแล</h2>
+    <label>ชื่อผู้ใช้</label>
+    <input type="text" id="username">
+    <label>รหัสผ่าน</label>
+    <input type="password" id="password">
+    <button id="loginBtn">เข้าสู่ระบบ</button>
+  </div>
 
-  <h2 style="text-align:center;">🗺️ Admin - ปักหมุดแผนที่งานไหมขอนแก่น</h2>
-  <button id="logout">🚪 ออกจากระบบ</button>
+  <div id="adminContainer">
+    <h2>แผงควบคุมผู้ดูแล - ปักหมุดสถานที่</h2>
+    <label>ชื่อสถานที่</label>
+    <input type="text" id="name">
 
-  <form id="placeForm">
-    <input id="name" placeholder="ชื่อสถานที่" required>
-    <select id="category" required>
-      <option value="">-- เลือกหมวดหมู่ --</option>
+    <label>หมวดหมู่</label>
+    <select id="category">
       <option>ร้านค้า</option>
       <option>โซนกิจกรรม</option>
       <option>ซุ้มหน่วยงาน</option>
@@ -41,22 +41,22 @@
       <option>พยาบาล</option>
       <option>ความปลอดภัย</option>
     </select>
-    <textarea id="detail" placeholder="รายละเอียดเพิ่มเติม"></textarea>
-    <input id="lat" placeholder="ละติจูด" readonly>
-    <input id="lng" placeholder="ลองจิจูด" readonly>
-    <button type="submit">💾 บันทึกพิกัด</button>
-  </form>
 
-  <div id="map"></div>
+    <label>รายละเอียด</label>
+    <textarea id="details"></textarea>
 
-  <h3 style="text-align:center;">📍 รายการหมุดทั้งหมด</h3>
-  <ul id="markerList"></ul>
+    <div id="map"></div>
+    <button id="saveBtn">บันทึกสถานที่</button>
 
+    <h3>รายการสถานที่ทั้งหมด</h3>
+    <div class="location-list" id="locationList"></div>
+  </div>
+
+  <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
   <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/12.5.0/firebase-app.js";
     import { getDatabase, ref, push, onValue, remove } from "https://www.gstatic.com/firebasejs/12.5.0/firebase-database.js";
 
-    // ✅ Firebase Config
     const firebaseConfig = {
       apiKey: "AIzaSyDGYuI3yxJbUTc6T_0pm6WiEKZul11tXS0",
       authDomain: "suchartwork-1487382986748.firebaseapp.com",
@@ -70,72 +70,67 @@
     const app = initializeApp(firebaseConfig);
     const db = getDatabase(app);
 
-    const map = L.map('map').setView([16.4322, 102.8236], 17);
-    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-      attribution: '© OpenStreetMap contributors'
-    }).addTo(map);
+    const loginContainer = document.getElementById("loginContainer");
+    const adminContainer = document.getElementById("adminContainer");
 
-    let marker = L.marker([16.4322, 102.8236], { draggable: true }).addTo(map);
-    document.getElementById('lat').value = marker.getLatLng().lat;
-    document.getElementById('lng').value = marker.getLatLng().lng;
+    loginContainer.style.display = "block";
 
-    marker.on('dragend', () => {
-      const pos = marker.getLatLng();
-      document.getElementById('lat').value = pos.lat.toFixed(6);
-      document.getElementById('lng').value = pos.lng.toFixed(6);
-    });
-
-    if (navigator.geolocation) {
-      navigator.geolocation.getCurrentPosition(pos => {
-        const lat = pos.coords.latitude, lng = pos.coords.longitude;
-        marker.setLatLng([lat, lng]);
-        map.setView([lat, lng], 17);
-        document.getElementById('lat').value = lat;
-        document.getElementById('lng').value = lng;
-      });
-    }
-
-    const form = document.getElementById('placeForm');
-    form.addEventListener('submit', e => {
-      e.preventDefault();
-      const data = {
-        name: name.value,
-        category: category.value,
-        detail: detail.value,
-        lat: parseFloat(lat.value),
-        lng: parseFloat(lng.value)
-      };
-      push(ref(db, "places"), data);
-      alert("✅ บันทึกข้อมูลเรียบร้อย!");
-      form.reset();
-    });
-
-    const list = document.getElementById('markerList');
-    onValue(ref(db, "places"), snapshot => {
-      list.innerHTML = "";
-      snapshot.forEach(item => {
-        const key = item.key;
-        const val = item.val();
-        const li = document.createElement('li');
-        li.innerHTML = `<b>${val.name}</b> (${val.category})
-          <br><button data-key="${key}" style="color:red;">🗑️ ลบ</button>`;
-        list.appendChild(li);
-      });
-    });
-
-    list.addEventListener('click', e => {
-      if (e.target.tagName === 'BUTTON') {
-        const key = e.target.dataset.key;
-        remove(ref(db, "places/" + key));
-        alert("🗑️ ลบสำเร็จ");
+    document.getElementById("loginBtn").addEventListener("click", () => {
+      const user = document.getElementById("username").value;
+      const pass = document.getElementById("password").value;
+      if (user === "admin" && pass === "Tommasi288!") {
+        loginContainer.style.display = "none";
+        adminContainer.style.display = "block";
+      } else {
+        alert("ชื่อผู้ใช้หรือรหัสผ่านไม่ถูกต้อง");
       }
     });
 
-    // ปุ่มออกจากระบบ
-    document.getElementById("logout").addEventListener("click", () => {
-      localStorage.removeItem("adminLogin");
-      window.location.href = "login.html";
+    const map = L.map("map").setView([16.4419, 102.835], 16);
+    L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png").addTo(map);
+    const marker = L.marker([16.4419, 102.835], { draggable: true }).addTo(map);
+
+    if (navigator.geolocation) {
+      navigator.geolocation.getCurrentPosition((pos) => {
+        const lat = pos.coords.latitude;
+        const lng = pos.coords.longitude;
+        marker.setLatLng([lat, lng]);
+        map.setView([lat, lng], 17);
+      });
+    }
+
+    document.getElementById("saveBtn").addEventListener("click", () => {
+      const name = document.getElementById("name").value;
+      const category = document.getElementById("category").value;
+      const details = document.getElementById("details").value;
+      const lat = marker.getLatLng().lat;
+      const lng = marker.getLatLng().lng;
+
+      if (!name.trim()) return alert("กรุณากรอกชื่อสถานที่");
+
+      push(ref(db, "locations"), { name, category, details, lat, lng });
+      alert("✅ บันทึกข้อมูลเรียบร้อยแล้ว");
     });
+
+    const list = document.getElementById("locationList");
+    onValue(ref(db, "locations"), (snapshot) => {
+      list.innerHTML = "";
+      const data = snapshot.val();
+      if (!data) return;
+      Object.entries(data).forEach(([key, loc]) => {
+        const div = document.createElement("div");
+        div.className = "location-item";
+        div.innerHTML = `<b>${loc.name}</b> (${loc.category})<br>${loc.details}
+        <br><button onclick="deleteLocation('${key}')">ลบ</button>`;
+        list.appendChild(div);
+      });
+    });
+
+    window.deleteLocation = (key) => {
+      if (confirm("ต้องการลบสถานที่นี้หรือไม่?")) {
+        remove(ref(db, "locations/" + key));
+      }
+    };
   </script>
 </body>
 </html>
